@@ -25,6 +25,8 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 num_epochs = 50
 
+best_val_loss = float('inf')
+
 for epoch in range(num_epochs):
     model.train()
     train_loss = 0
@@ -39,8 +41,6 @@ for epoch in range(num_epochs):
         train_loss += loss.item()
     train_loss /= len(train_loader)
 
-best_val_loss = float('inf')
-for epoch in range(num_epochs):
     model.eval()
     val_loss = 0
     with torch.no_grad():
@@ -50,9 +50,10 @@ for epoch in range(num_epochs):
             y_pred = model(X_batch)
             loss = loss_fn(y_pred, y_batch)
             val_loss += loss.item()
-        val_loss /= len(val_loader)
+    val_loss /= len(val_loader)
+    if((epoch+1)%5==0):
         print(f"Epoch {epoch+1} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
-        if epoch == 0 or val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save(model.state_dict(), "../models/best_model.pth")
-        
+    
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        torch.save(model.state_dict(), "models/best_model.pth")
