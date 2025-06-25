@@ -21,7 +21,7 @@ val_loader = DataLoader(val_data, batch_size=32)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CNN_RNN_AttnModel().to(device)   
 loss_fn = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.004)
 
 num_epochs = 50
 
