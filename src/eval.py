@@ -14,8 +14,31 @@ model.eval()
 X_test = torch.tensor(np.load("data/X_test.npy"), dtype=torch.float32)
 y_test = torch.tensor(np.load("data/y_test.npy"), dtype=torch.float32)
 
+sample = X_test[0].unsqueeze(0).to(device)
+
 with torch.no_grad():
-    y_pred = model(X_test.to(device))
+    _, attn_weights = model(sample, return_attn=True)
+
+print("attn_weights shape:", attn_weights.shape)
+
+attn_matrix = attn_weights.squeeze(0).cpu().numpy()
+# print("attn_avg shape:", attn_avg.shape)
+# print("attn_avg values:", attn_avg)
+attn_per_timestep = attn_matrix[-1]
+print("attn_per_timestep:", attn_per_timestep.shape)
+print(attn_per_timestep)
+
+plt.figure(figsize=(10, 4))
+plt.plot(attn_per_timestep)
+plt.title("Attention Weight per Input Timestep")
+plt.xlabel("Timestep (0 = oldest, right = most recent)")
+plt.ylabel("Attention")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+with torch.no_grad():
+    y_pred = model(X_test.to(device))  # Don't pass return_attn=True here
 
 y_pred_np = y_pred.cpu().numpy()
 y_test_np = y_test.cpu().numpy()
@@ -30,12 +53,12 @@ mae = mean_absolute_error(y_test_unscaled, y_pred_unscaled)
 print(f"MSE: {mse:.2f}")
 print(f"MAE: {mae:.2f}")
 
-plt.figure(figsize=(10,5))
-plt.plot(y_test_unscaled, label = "Actual", linewidth=2)
-plt.plot(y_pred_unscaled, label = "Predicted", linewidth=2)
+plt.figure(figsize=(10, 5))
+plt.plot(y_test_unscaled, label="Actual", linewidth=2)
+plt.plot(y_pred_unscaled, label="Predicted", linewidth=2)
 plt.xlabel("Time Step")
-plt.ylabel("Close Price(Rs.)")
+plt.ylabel("Close Price (₹)")
 plt.title("Predicted vs Actual Close Prices")
-plt.legend()    
+plt.legend()
 plt.tight_layout()
-plt.show()  
+plt.show()

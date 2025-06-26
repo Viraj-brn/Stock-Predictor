@@ -19,12 +19,17 @@ class CNN_RNN_AttnModel(nn.Module):
         
         self.relu = nn.ReLU()
 
-    def forward(self,X):
+    def forward(self,X, return_attn = False):
         X = X.transpose(1, 2) #swap dim1 and dim2
         X = self.conv(X)
         X = self.relu(X)
         X = X.transpose(2, 1) #swap dim2 and dim1
         X, _ = self.gru(X) #output, hidden
-        attn_output, _ = self.attn(X, X, X) #Query, key, value = X
+        attn_output, attn_weights = self.attn(X, X, X) #Query, key, value = X
         X = attn_output.mean(dim = 1)
-        return self.fc(X)
+        output = self.fc(X)
+         
+        if return_attn:
+            return output, attn_weights
+        else:
+            return output
