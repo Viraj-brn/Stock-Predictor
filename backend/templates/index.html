@@ -1,10 +1,150 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeepTime Forecasting</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+      scroll-behavior: smooth; /* Smooth scrolling */
+    }
+
+    /* Navbar */
+    .navbar {
+      background: linear-gradient(135deg, #004aad, #007bff);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .nav-link {
+      color: white !important;
+      font-weight: 500;
+      margin: 0 10px;
+      transition: color 0.3s;
+    }
+    .navbar .nav-link:hover {
+      color: #ffd700 !important;
+    }
+
+    /* Hero Section */
+    .hero {
+      background: linear-gradient(135deg, #004aad, #007bff);
+      color: white;
+      padding: 100px 20px 80px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+    }
+    .hero p {
+      font-size: 1.3rem;
+      opacity: 0.9;
+    }
+
+    /* Prediction Card */
+    #prediction {
+      margin-top: -40px;
+    }
+    .prediction-card {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+    .prediction-card:hover {
+      transform: translateY(-5px);
+    }
+
+    /* Charts */
+    #charts h3 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #004aad;
+    }
+    .chart-section img {
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      transition: transform 0.3s ease;
+    }
+    .chart-section img:hover {
+      transform: scale(1.03);
+    }
+
+    /* Footer */
+    footer {
+      background: #222;
+      color: white;
+      padding: 20px 10px;
+      margin-top: 50px;
+    }
+    footer a {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-  <h1>DeepTime Forecasting</h1>
-  <p>Predicted Close Price for next 3-day horizon: <strong>{{ prediction }}</strong> ₹</p>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#home">DeepTime</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#prediction">Prediction</a></li>
+          <li class="nav-item"><a class="nav-link" href="#charts">Charts</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="home">
+    <h1>DeepTime Forecasting</h1>
+    <p>Predicting 3-day stock closing prices with Deep Learning</p>
+  </section>
+
+  <!-- Prediction Card -->
+  <section id="prediction" class="container">
+    <div class="card prediction-card text-center p-4">
+      <h4 class="card-title">Predicted Close Price</h4>
+      <p class="card-text fs-2 fw-bold text-primary">₹ {{ prediction }}</p>
+    </div>
+  </section>
+
+  <!-- Charts Section -->
+  <section id="charts" class="container chart-section my-5">
+    <h3>Visualizations</h3>
+    <div class="row g-4">
+      <div class="col-md-6">
+        <h5 class="text-center">Prediction vs Actual</h5>
+        <img src="{{ url_for('static', filename='plot.png') }}" class="img-fluid shadow-sm" alt="Prediction Plot">
+      </div>
+      <div class="col-md-6">
+        <h5 class="text-center">Attention Weights</h5>
+        <img src="{{ url_for('static', filename='attention.png') }}" class="img-fluid shadow-sm" alt="Attention Plot">
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-center">
+    <p class="mb-0">Built with Flask & PyTorch | 
+      <a href="https://github.com/yourusername/DeepTime-Forecasting" target="_blank">GitHub</a>
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
