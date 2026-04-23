@@ -1,5 +1,8 @@
 from flask import Flask, render_template, jsonify, request
-from model_loader import load_model_and_scaler
+try:
+    from backend.model_loader import load_model_and_scaler
+except ImportError:
+    from model_loader import load_model_and_scaler
 import numpy as np
 import torch
 import json
