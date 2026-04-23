@@ -50,7 +50,7 @@ DeepTime Forecasting is a production-grade, self-updating stock prediction web a
    ```
 
 4. **View the Dashboard:**
-   Open your browser and navigate to `http://127.0.0.1:5000/`.
+   Open your browser and navigate to `https://lookforstoncks.onrender.com/`.
 
 ### Using Docker
 To build and run the Docker container locally:
