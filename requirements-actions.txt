@@ -1,0 +1,8 @@
+# Lightweight dependencies for GitHub Actions daily prediction pipeline.
+# Uses CPU-only PyTorch to keep the runner fast and small.
+numpy>=2.0
+pandas>=2.0
+scikit-learn>=1.5
+joblib>=1.3
+yfinance>=0.2.40
+torch>=2.0

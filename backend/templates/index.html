@@ -1,150 +1,592 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DeepTime Forecasting</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DeepTime Forecasting — AI-powered daily stock price predictions with interactive charts for JNJ, JPM, MSFT, PEP, and XOM." />
+  <title>DeepTime Forecasting | AI Stock Predictions</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- TradingView Lightweight Charts -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg-primary:   #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card:      rgba(17, 24, 39, 0.7);
+      --border:       rgba(255,255,255,0.06);
+      --text-primary: #f1f5f9;
+      --text-secondary:#94a3b8;
+      --text-muted:   #475569;
+      --accent-cyan:  #22d3ee;
+      --accent-blue:  #3b82f6;
+      --accent-green: #10b981;
+      --accent-red:   #ef4444;
+    }
+
     body {
-      background-color: #f8f9fa;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #333;
-      scroll-behavior: smooth; /* Smooth scrolling */
+      background: var(--bg-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    /* Navbar */
-    .navbar {
-      background: linear-gradient(135deg, #004aad, #007bff);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-    .navbar .nav-link {
-      color: white !important;
-      font-weight: 500;
-      margin: 0 10px;
-      transition: color 0.3s;
-    }
-    .navbar .nav-link:hover {
-      color: #ffd700 !important;
+    /* Ambient gradient background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 15% 10%, rgba(34,211,238,.04) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 35% at 85% 85%, rgba(59,130,246,.03) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
     }
 
-    /* Hero Section */
-    .hero {
-      background: linear-gradient(135deg, #004aad, #007bff);
-      color: white;
-      padding: 100px 20px 80px;
-      text-align: center;
+    /* ── Glow Dot ─────────────────────────────────────── */
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 6px 2px rgba(16,185,129,.5);
+      animation: pulse-dot 2s ease-in-out infinite;
     }
-    .hero h1 {
-      font-size: 3rem;
-      font-weight: 700;
-    }
-    .hero p {
-      font-size: 1.3rem;
-      opacity: 0.9;
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 6px 2px rgba(16,185,129,.5); transform: scale(1); }
+      50%      { box-shadow: 0 0 14px 6px rgba(16,185,129,.25); transform: scale(1.3); }
     }
 
-    /* Prediction Card */
-    #prediction {
-      margin-top: -40px;
+    /* ── Glassmorphism ────────────────────────────────── */
+    .glass {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px) saturate(1.2);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      border-radius: 0.75rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s, box-shadow .3s, transform .2s;
     }
-    .prediction-card {
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      transition: transform 0.3s ease;
+    .glass::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255,255,255,.03) 0%, transparent 50%);
+      pointer-events: none;
     }
-    .prediction-card:hover {
-      transform: translateY(-5px);
+    .glass:hover {
+      border-color: rgba(34,211,238,.15);
+      box-shadow: 0 0 24px -6px rgba(34,211,238,.08);
+      transform: translateY(-1px);
     }
 
-    /* Charts */
-    #charts h3 {
-      text-align: center;
+    /* ── Ticker card selected state ───────────────────── */
+    .ticker-card.active {
+      border-color: rgba(34,211,238,.35);
+      box-shadow: 0 0 20px -4px rgba(34,211,238,.15);
+    }
+
+    /* ── Price flash ──────────────────────────────────── */
+    @keyframes flash-up   { 0% { color: var(--accent-green); } 100% { color: var(--text-primary); } }
+    @keyframes flash-down { 0% { color: var(--accent-red); }   100% { color: var(--text-primary); } }
+    .price-up   { animation: flash-up   .5s ease-out forwards; }
+    .price-down { animation: flash-down .5s ease-out forwards; }
+
+    /* ── Chart tabs ───────────────────────────────────── */
+    .chart-tab {
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: .8rem;
       font-weight: 600;
-      margin-bottom: 20px;
-      color: #004aad;
+      letter-spacing: .02em;
+      cursor: pointer;
+      transition: all .2s;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid transparent;
     }
-    .chart-section img {
-      border-radius: 10px;
-      border: 1px solid #ddd;
-      transition: transform 0.3s ease;
+    .chart-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255,255,255,.04);
     }
-    .chart-section img:hover {
-      transform: scale(1.03);
+    .chart-tab.active {
+      color: var(--accent-cyan);
+      background: rgba(34,211,238,.08);
+      border-color: rgba(34,211,238,.2);
     }
 
-    /* Footer */
-    footer {
-      background: #222;
-      color: white;
-      padding: 20px 10px;
-      margin-top: 50px;
+    /* ── Skeleton shimmer ─────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,.03) 25%, rgba(255,255,255,.06) 50%, rgba(255,255,255,.03) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+      border-radius: 4px;
     }
-    footer a {
-      color: #ffffff;
-      text-decoration: underline;
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Chart container sizing ───────────────────────── */
+    #chart-container {
+      width: 100%;
+      height: 420px;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) { #chart-container { height: 480px; } }
+
+    /* ── Delta badge ──────────────────────────────────── */
+    .badge {
+      font-size: .65rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      line-height: 1.4;
+    }
+
+    /* ── Scrollbar ────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+    /* ── Legend dots ──────────────────────────────────── */
+    .legend-dot {
+      width: 10px; height: 3px;
+      border-radius: 2px;
+      display: inline-block;
     }
   </style>
 </head>
-<body>
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container">
-      <a class="navbar-brand fw-bold" href="#home">DeepTime</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="#prediction">Prediction</a></li>
-          <li class="nav-item"><a class="nav-link" href="#charts">Charts</a></li>
-        </ul>
+<body class="font-sans text-gray-200 antialiased relative">
+
+  <!-- ══════════════════════════════════════════════════════
+       HEADER
+       ══════════════════════════════════════════════════════ -->
+  <header class="relative z-10 border-b border-white/5 bg-[#111827]/80 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      <!-- Brand -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-md bg-gradient-to-br from-cyan-400/80 to-blue-500/80 flex items-center justify-center shadow-lg shadow-cyan-500/10">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8"/></svg>
+        </div>
+        <h1 class="text-base font-bold tracking-tight">
+          <span class="text-white">Deep</span><span class="text-cyan-400">Time</span>
+          <span class="text-gray-500 font-medium text-sm ml-1 hidden sm:inline">Forecasting</span>
+        </h1>
+      </div>
+
+      <!-- Right side -->
+      <div class="flex items-center gap-5">
+        <span id="last-update" class="text-xs text-gray-600 font-mono hidden sm:block">--:--:--</span>
+        <div class="flex items-center gap-2 text-xs font-medium text-gray-400">
+          <div class="live-dot" id="live-dot"></div>
+          <span id="live-label">Connecting…</span>
+        </div>
       </div>
     </div>
-  </nav>
+  </header>
 
-  <!-- Hero Section -->
-  <section class="hero" id="home">
-    <h1>DeepTime Forecasting</h1>
-    <p>Predicting 3-day stock closing prices with Deep Learning</p>
-  </section>
+  <!-- ══════════════════════════════════════════════════════
+       MAIN
+       ══════════════════════════════════════════════════════ -->
+  <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
 
-  <!-- Prediction Card -->
-  <section id="prediction" class="container">
-    <div class="card prediction-card text-center p-4">
-      <h4 class="card-title">Predicted Close Price</h4>
-      <p class="card-text fs-2 fw-bold text-primary">₹ {{ prediction }}</p>
-    </div>
-  </section>
-
-  <!-- Charts Section -->
-  <section id="charts" class="container chart-section my-5">
-    <h3>Visualizations</h3>
-    <div class="row g-4">
-      <div class="col-md-6">
-        <h5 class="text-center">Prediction vs Actual</h5>
-        <img src="{{ url_for('static', filename='plot.png') }}" class="img-fluid shadow-sm" alt="Prediction Plot">
+    <!-- ── TICKER CARDS ROW ───────────────────────────── -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-cyan-400/60">Latest Predictions</h2>
+        <span class="text-[.65rem] text-gray-600 font-mono" id="pred-date">—</span>
       </div>
-      <div class="col-md-6">
-        <h5 class="text-center">Attention Weights</h5>
-        <img src="{{ url_for('static', filename='attention.png') }}" class="img-fluid shadow-sm" alt="Attention Plot">
+      <div id="cards-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <!-- JS fills this -->
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Footer -->
-  <footer class="text-center">
-    <p class="mb-0">Built with Flask & PyTorch | 
-      <a href="https://github.com/yourusername/DeepTime-Forecasting" target="_blank">GitHub</a>
-    </p>
-  </footer>
+    <!-- ── CHART SECTION ──────────────────────────────── -->
+    <section class="glass p-4 sm:p-5">
+      <!-- Chart header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h2 id="chart-title" class="text-sm font-semibold text-white">MSFT — Microsoft Corp.</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Predicted vs Actual Close Prices</p>
+        </div>
+        <!-- Ticker tabs -->
+        <div id="chart-tabs" class="flex gap-1.5 flex-wrap">
+          <!-- JS fills this -->
+        </div>
+      </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+      <!-- Legend -->
+      <div class="flex items-center gap-5 mb-3 text-[.65rem] text-gray-500">
+        <div class="flex items-center gap-1.5">
+          <span class="legend-dot" style="background: #22d3ee;"></span>
+          <span>Model Prediction</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="legend-dot" style="background: rgba(255,255,255,.45);"></span>
+          <span>Actual Price</span>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div id="chart-container"></div>
+    </section>
+
+    <!-- ── MODEL INFO ─────────────────────────────────── -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="glass p-4 text-center">
+        <p class="text-[.6rem] uppercase tracking-widest text-gray-600 mb-1">Architecture</p>
+        <p class="text-sm font-semibold text-white">CNN-GRU-Attention</p>
+      </div>
+      <div class="glass p-4 text-center">
+        <p class="text-[.6rem] uppercase tracking-widest text-gray-600 mb-1">Lookback Window</p>
+        <p class="text-sm font-semibold text-white">60 Trading Days</p>
+      </div>
+      <div class="glass p-4 text-center">
+        <p class="text-[.6rem] uppercase tracking-widest text-gray-600 mb-1">Updates</p>
+        <p class="text-sm font-semibold text-white">Daily via GitHub Actions</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center text-[.6rem] text-gray-700 pt-4 pb-8 space-y-1">
+      <p>Predictions are generated by a deep-learning model for demonstration purposes only. Not financial advice.</p>
+      <p>Charts powered by <a href="https://www.tradingview.com/" target="_blank" rel="noopener" class="text-gray-500 hover:text-cyan-400 transition-colors">TradingView Lightweight Charts</a></p>
+    </footer>
+  </main>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       JAVASCRIPT
+       ══════════════════════════════════════════════════════ -->
+  <script>
+    (() => {
+      'use strict';
+
+      // ── Config ──────────────────────────────────────
+      const TICKERS = ['JNJ', 'JPM', 'MSFT', 'PEP', 'XOM'];
+      const META = {
+        JNJ:  { name: 'Johnson & Johnson', icon: '💊' },
+        JPM:  { name: 'JPMorgan Chase',    icon: '🏦' },
+        MSFT: { name: 'Microsoft Corp.',   icon: '🖥️' },
+        PEP:  { name: 'PepsiCo Inc.',      icon: '🥤' },
+        XOM:  { name: 'Exxon Mobil',       icon: '⛽' },
+      };
+
+      let activeTicker = 'MSFT';
+      let predictionsData = [];
+      let previousPrices = {};
+      let chart = null;
+      let predictionSeries = null;
+      let actualSeries = null;
+
+      // ── DOM refs ────────────────────────────────────
+      const cardsGrid    = document.getElementById('cards-grid');
+      const chartContainer = document.getElementById('chart-container');
+      const chartTitle   = document.getElementById('chart-title');
+      const chartTabs    = document.getElementById('chart-tabs');
+      const liveLabel    = document.getElementById('live-label');
+      const liveDot      = document.getElementById('live-dot');
+      const lastUpdate   = document.getElementById('last-update');
+      const predDate     = document.getElementById('pred-date');
+
+
+      // ══════════════════════════════════════════════════
+      // CARDS
+      // ══════════════════════════════════════════════════
+
+      function buildCards() {
+        cardsGrid.innerHTML = '';
+        TICKERS.forEach(ticker => {
+          const card = document.createElement('div');
+          card.id = `card-${ticker}`;
+          card.className = `glass ticker-card p-3.5 cursor-pointer ${ticker === activeTicker ? 'active' : ''}`;
+          card.onclick = () => switchTicker(ticker);
+          card.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm">${META[ticker].icon}</span>
+                <span class="text-sm font-bold text-white tracking-wide">${ticker}</span>
+              </div>
+              <span id="badge-${ticker}" class="badge bg-white/5 text-gray-600">—</span>
+            </div>
+            <p class="text-[.6rem] text-gray-600 mb-2">${META[ticker].name}</p>
+            <div class="flex items-baseline gap-0.5">
+              <span class="text-[.65rem] text-gray-500 font-mono">$</span>
+              <span id="price-${ticker}" class="text-xl font-bold font-mono text-gray-500">
+                <span class="skeleton inline-block w-20 h-6">&nbsp;</span>
+              </span>
+            </div>
+          `;
+          cardsGrid.appendChild(card);
+        });
+      }
+
+      function updateCards(latest) {
+        if (!latest) return;
+        const preds = latest.predictions;
+        predDate.textContent = latest.date;
+
+        TICKERS.forEach(ticker => {
+          const priceEl = document.getElementById(`price-${ticker}`);
+          const badgeEl = document.getElementById(`badge-${ticker}`);
+          if (!priceEl || !preds[ticker]) return;
+
+          const current = preds[ticker];
+          const prev = previousPrices[ticker];
+          const actual = latest.actuals ? latest.actuals[ticker] : null;
+
+          // Price display
+          priceEl.textContent = current.toFixed(2);
+
+          // Flash animation
+          priceEl.classList.remove('price-up', 'price-down');
+          void priceEl.offsetWidth;
+          if (prev !== undefined) {
+            if (current > prev) priceEl.classList.add('price-up');
+            else if (current < prev) priceEl.classList.add('price-down');
+          }
+
+          // Badge: show prediction vs actual delta if available
+          if (actual) {
+            const delta = current - actual;
+            const pct = ((delta / actual) * 100).toFixed(1);
+            if (delta >= 0) {
+              badgeEl.className = 'badge bg-emerald-500/10 text-emerald-400';
+              badgeEl.textContent = `+${pct}%`;
+            } else {
+              badgeEl.className = 'badge bg-red-500/10 text-red-400';
+              badgeEl.textContent = `${pct}%`;
+            }
+          }
+
+          previousPrices[ticker] = current;
+        });
+      }
+
+
+      // ══════════════════════════════════════════════════
+      // CHART
+      // ══════════════════════════════════════════════════
+
+      function initChart() {
+        chart = LightweightCharts.createChart(chartContainer, {
+          width: chartContainer.clientWidth,
+          height: chartContainer.clientHeight,
+          layout: {
+            background: { type: 'solid', color: 'transparent' },
+            textColor: '#64748b',
+            fontSize: 11,
+            fontFamily: 'Inter, system-ui, sans-serif',
+          },
+          grid: {
+            vertLines: { color: 'rgba(255,255,255,0.03)' },
+            horzLines: { color: 'rgba(255,255,255,0.03)' },
+          },
+          crosshair: {
+            mode: LightweightCharts.CrosshairMode.Normal,
+            vertLine: { color: 'rgba(34,211,238,0.2)', width: 1, style: 2, labelBackgroundColor: '#1e293b' },
+            horzLine: { color: 'rgba(34,211,238,0.2)', width: 1, style: 2, labelBackgroundColor: '#1e293b' },
+          },
+          rightPriceScale: {
+            borderColor: 'rgba(255,255,255,0.05)',
+            scaleMargins: { top: 0.1, bottom: 0.1 },
+          },
+          timeScale: {
+            borderColor: 'rgba(255,255,255,0.05)',
+            timeVisible: false,
+            fixLeftEdge: true,
+            fixRightEdge: true,
+          },
+          handleScroll: { vertTouchDrag: false },
+        });
+
+        // Actual price line (rendered first = behind)
+        actualSeries = chart.addLineSeries({
+          color: 'rgba(255,255,255,0.4)',
+          lineWidth: 1.5,
+          lineStyle: 0,
+          crosshairMarkerRadius: 4,
+          crosshairMarkerBackgroundColor: 'rgba(255,255,255,0.6)',
+          priceLineVisible: false,
+          lastValueVisible: false,
+          title: 'Actual',
+        });
+
+        // Prediction line with area fill (on top)
+        predictionSeries = chart.addAreaSeries({
+          lineColor: '#22d3ee',
+          lineWidth: 2,
+          topColor: 'rgba(34,211,238,0.18)',
+          bottomColor: 'rgba(34,211,238,0.0)',
+          crosshairMarkerRadius: 5,
+          crosshairMarkerBackgroundColor: '#22d3ee',
+          priceLineVisible: true,
+          priceLineColor: 'rgba(34,211,238,0.3)',
+          lastValueVisible: true,
+          title: 'Predicted',
+        });
+
+        // Responsive resize
+        const ro = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            const { width } = entry.contentRect;
+            chart.applyOptions({ width });
+          }
+        });
+        ro.observe(chartContainer);
+      }
+
+      function updateChart(ticker) {
+        if (!chart || !predictionsData.length) return;
+
+        const predData = [];
+        const actData = [];
+
+        predictionsData.forEach(entry => {
+          const time = entry.date;
+          if (entry.predictions && entry.predictions[ticker] !== undefined) {
+            predData.push({ time, value: entry.predictions[ticker] });
+          }
+          if (entry.actuals && entry.actuals[ticker] !== undefined) {
+            actData.push({ time, value: entry.actuals[ticker] });
+          }
+        });
+
+        predictionSeries.setData(predData);
+        actualSeries.setData(actData);
+        chart.timeScale().fitContent();
+
+        // Update title
+        chartTitle.textContent = `${ticker} — ${META[ticker].name}`;
+      }
+
+      function buildTabs() {
+        chartTabs.innerHTML = '';
+        TICKERS.forEach(ticker => {
+          const tab = document.createElement('button');
+          tab.className = `chart-tab ${ticker === activeTicker ? 'active' : ''}`;
+          tab.textContent = ticker;
+          tab.id = `tab-${ticker}`;
+          tab.onclick = () => switchTicker(ticker);
+          chartTabs.appendChild(tab);
+        });
+      }
+
+      function switchTicker(ticker) {
+        activeTicker = ticker;
+
+        // Update tabs
+        document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+        const tab = document.getElementById(`tab-${ticker}`);
+        if (tab) tab.classList.add('active');
+
+        // Update cards
+        document.querySelectorAll('.ticker-card').forEach(c => c.classList.remove('active'));
+        const card = document.getElementById(`card-${ticker}`);
+        if (card) card.classList.add('active');
+
+        // Update chart
+        updateChart(ticker);
+      }
+
+
+      // ══════════════════════════════════════════════════
+      // DATA FETCHING
+      // ══════════════════════════════════════════════════
+
+      function setStatus(ok) {
+        if (ok) {
+          liveDot.style.background = 'var(--accent-green)';
+          liveDot.style.boxShadow = '0 0 6px 2px rgba(16,185,129,.5)';
+          liveLabel.textContent = 'Live Feed Active';
+          liveLabel.className = 'text-gray-400';
+        } else {
+          liveDot.style.background = 'var(--accent-red)';
+          liveDot.style.boxShadow = '0 0 6px 2px rgba(239,68,68,.5)';
+          liveLabel.textContent = 'Reconnecting…';
+          liveLabel.className = 'text-red-400';
+        }
+      }
+
+      async function fetchPredictions() {
+        try {
+          const res = await fetch('/api/predictions');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          predictionsData = await res.json();
+
+          setStatus(true);
+          lastUpdate.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+          // Update cards with latest entry
+          if (predictionsData.length > 0) {
+            updateCards(predictionsData[predictionsData.length - 1]);
+          }
+
+          // Update chart
+          updateChart(activeTicker);
+
+        } catch (err) {
+          console.warn('[DeepTime] Fetch error:', err.message);
+          setStatus(false);
+
+          // fallback: try /live_predict for backward compat
+          try {
+            const res2 = await fetch('/live_predict');
+            if (res2.ok) {
+              const data = await res2.json();
+              setStatus(true);
+              // Build a synthetic latest entry
+              const fakeLatest = {
+                date: new Date().toISOString().slice(0, 10),
+                predictions: data,
+                actuals: {},
+              };
+              updateCards(fakeLatest);
+            }
+          } catch (e2) { /* silent */ }
+        }
+      }
+
+
+      // ══════════════════════════════════════════════════
+      // INIT
+      // ══════════════════════════════════════════════════
+
+      buildCards();
+      buildTabs();
+      initChart();
+      fetchPredictions();
+
+      // Refresh every 60 seconds (data changes daily, not real-time)
+      setInterval(fetchPredictions, 60000);
+
+    })();
+  </script>
 </body>
 </html>

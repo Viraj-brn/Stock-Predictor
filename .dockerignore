@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+*.pyo
+.git
+.github
+.gitignore
+.gitattributes
+venv/
+notebooks/
+outputs/
+artifacts/
+*.npy
+*.md
+test.exe
+.dockerignore
+Dockerfile
