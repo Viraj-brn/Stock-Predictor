@@ -13,4 +13,4 @@ COPY . .
 EXPOSE 5000
 
 # Run with gunicorn (1 worker to stay within free tier RAM)
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5000", "--timeout", "120", "backend.app:app"]
+CMD gunicorn -w 1 -b 0.0.0.0:${PORT:-5000} --timeout 120 backend.app:app
