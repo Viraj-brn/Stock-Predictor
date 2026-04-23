@@ -15,8 +15,8 @@ def build_pipeline():
     features = ['Close', 'High', 'Low', 'Open', 'Volume']
     
     print(f"Downloading data for {tickers}...")
-    # Fetching ~6 years of data to give the model plenty of training context
-    df = yf.download(tickers, start="2018-01-01", end="2024-04-20")
+    # Fetching data from 2018 up to today to give the model plenty of training context
+    df = yf.download(tickers, start="2018-01-01")
     
     # Clean missing data (forward fill, then backward fill)
     df = df.ffill().bfill()
