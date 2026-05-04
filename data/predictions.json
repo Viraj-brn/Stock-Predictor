@@ -4010,5 +4010,22 @@
       "PEP": 158.49,
       "XOM": 154.33
     }
+  },
+  {
+    "date": "2026-05-01",
+    "predictions": {
+      "JNJ": NaN,
+      "JPM": NaN,
+      "MSFT": NaN,
+      "PEP": NaN,
+      "XOM": NaN
+    },
+    "actuals": {
+      "JNJ": 227.19,
+      "JPM": 312.47,
+      "MSFT": 414.44,
+      "PEP": NaN,
+      "XOM": 152.75
+    }
   }
 ]
