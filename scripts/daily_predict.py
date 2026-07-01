@@ -14,6 +14,7 @@ Usage:
 import os
 import sys
 import json
+import math
 import argparse
 from datetime import datetime, timedelta
 
@@ -40,6 +41,27 @@ SEQ_LENGTH = 60
 PREDICTIONS_FILE = os.path.join(BASE_DIR, "data", "predictions.json")
 MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
 FEATURE_SCALER_PATH = os.path.join(BASE_DIR, "data", "close_scaler.pkl")
+
+
+def _sanitize_value(v):
+    """Replace NaN/Inf floats with None (JSON null)."""
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return None
+    return v
+
+
+def _sanitize_dict(d):
+    """Sanitize all values in a dict, replacing NaN/Inf with None."""
+    return {k: _sanitize_value(v) for k, v in d.items()}
+
+
+def _sanitize_entry(entry):
+    """Sanitize a single prediction entry."""
+    if "predictions" in entry and isinstance(entry["predictions"], dict):
+        entry["predictions"] = _sanitize_dict(entry["predictions"])
+    if "actuals" in entry and isinstance(entry["actuals"], dict):
+        entry["actuals"] = _sanitize_dict(entry["actuals"])
+    return entry
 
 
 def load_model():
@@ -118,23 +140,34 @@ def get_actual_prices(df):
     latest = df["Close"].iloc[-1]
     actuals = {}
     for ticker in TICKERS:
-        actuals[ticker] = round(float(latest[ticker]), 2)
+        val = float(latest[ticker])
+        actuals[ticker] = None if (math.isnan(val) or math.isinf(val)) else round(val, 2)
     return actuals
 
 
 def load_predictions():
-    """Load existing predictions.json or return empty list."""
+    """Load existing predictions.json, sanitizing any NaN values."""
     if os.path.exists(PREDICTIONS_FILE):
         with open(PREDICTIONS_FILE, "r") as f:
-            return json.load(f)
+            raw = f.read()
+        # Fix any literal NaN/Infinity tokens from prior buggy runs
+        raw = raw.replace("NaN", "null").replace("Infinity", "null").replace("-Infinity", "null")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            print("  [WARN] predictions.json is corrupted, starting fresh")
+            return []
+        return [_sanitize_entry(e) for e in data]
     return []
 
 
 def save_predictions(data):
-    """Save predictions to JSON file."""
+    """Save predictions to JSON file (NaN-safe)."""
     os.makedirs(os.path.dirname(PREDICTIONS_FILE), exist_ok=True)
+    # Sanitize every entry before writing
+    data = [_sanitize_entry(e) for e in data]
     with open(PREDICTIONS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=2, allow_nan=False)
     print(f"Saved {len(data)} entries to {PREDICTIONS_FILE}")
 
 
@@ -166,7 +199,8 @@ def run_daily_prediction():
 
     predictions = {}
     for i, ticker in enumerate(TICKERS):
-        predictions[ticker] = round(float(predicted_prices[i]), 2)
+        val = float(predicted_prices[i])
+        predictions[ticker] = None if (math.isnan(val) or math.isinf(val)) else round(val, 2)
 
     # Get actual closing prices (yesterday's close)
     actuals = get_actual_prices(df)

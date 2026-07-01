@@ -470,10 +470,10 @@
 
         predictionsData.forEach(entry => {
           const time = entry.date;
-          if (entry.predictions && entry.predictions[ticker] !== undefined) {
+          if (entry.predictions && entry.predictions[ticker] != null && isFinite(entry.predictions[ticker])) {
             predData.push({ time, value: entry.predictions[ticker] });
           }
-          if (entry.actuals && entry.actuals[ticker] !== undefined) {
+          if (entry.actuals && entry.actuals[ticker] != null && isFinite(entry.actuals[ticker])) {
             actData.push({ time, value: entry.actuals[ticker] });
           }
         });
@@ -538,7 +538,14 @@
         try {
           const res = await fetch('/api/predictions');
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          predictionsData = await res.json();
+
+          // Sanitize response: replace any literal NaN/Infinity with null
+          // before JSON.parse, in case the backend sends invalid JSON tokens
+          let rawText = await res.text();
+          rawText = rawText.replace(/\bNaN\b/g, 'null')
+                           .replace(/\bInfinity\b/g, 'null')
+                           .replace(/-Infinity\b/g, 'null');
+          predictionsData = JSON.parse(rawText);
 
           setStatus(true);
           lastUpdate.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });

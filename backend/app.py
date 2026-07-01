@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request
+from flask.json.provider import DefaultJSONProvider
 try:
     from backend.model_loader import load_model_and_scaler
 except ImportError:
@@ -6,12 +7,28 @@ except ImportError:
 import numpy as np
 import torch
 import json
+import math
 import os
 import time
 from datetime import datetime, timedelta
 from functools import lru_cache
 
+
+# ---------------------------------------------------------------------------
+# NaN-safe JSON provider — ensures NaN/Inf are serialized as null
+# ---------------------------------------------------------------------------
+class NaNSafeJSONProvider(DefaultJSONProvider):
+    """Custom JSON provider that converts NaN/Inf → null."""
+
+    def dumps(self, obj, **kwargs):
+        raw = super().dumps(obj, **kwargs)
+        # Replace JavaScript-invalid tokens produced by Python's json encoder
+        raw = raw.replace("NaN", "null").replace("Infinity", "null").replace("-Infinity", "null")
+        return raw
+
 app = Flask(__name__)
+app.json_provider_class = NaNSafeJSONProvider
+app.json = NaNSafeJSONProvider(app)
 model, scaler = load_model_and_scaler()
 
 # ---------------------------------------------------------------------------
@@ -99,9 +116,13 @@ def api_history(ticker):
 
         result = []
         for date, row in hist.iterrows():
+            val = float(row["Close"])
+            # Skip rows with NaN/Inf values
+            if math.isnan(val) or math.isinf(val):
+                continue
             result.append({
                 "time": date.strftime("%Y-%m-%d"),
-                "value": round(float(row["Close"]), 2),
+                "value": round(val, 2),
             })
 
         _history_cache[cache_key] = (result, now)
@@ -139,13 +160,16 @@ def live_predict():
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _load_predictions():
-    """Load predictions.json from disk (fresh on each request)."""
+    """Load predictions.json from disk (fresh on each request), sanitizing NaN."""
     if not os.path.exists(PREDICTIONS_FILE):
         return []
     try:
         with open(PREDICTIONS_FILE, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
+            raw = f.read()
+        # Fix any literal NaN/Infinity tokens from prior buggy runs
+        raw = raw.replace("NaN", "null").replace("Infinity", "null").replace("-Infinity", "null")
+        return json.loads(raw)
+    except (json.JSONDecodeError, IOError, ValueError):
         return []
 
 
