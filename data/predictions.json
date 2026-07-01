@@ -4014,17 +4014,17 @@
   {
     "date": "2026-05-01",
     "predictions": {
-      "JNJ": NaN,
-      "JPM": NaN,
-      "MSFT": NaN,
-      "PEP": NaN,
-      "XOM": NaN
+      "JNJ": null,
+      "JPM": null,
+      "MSFT": null,
+      "PEP": null,
+      "XOM": null
     },
     "actuals": {
       "JNJ": 227.19,
       "JPM": 312.47,
       "MSFT": 414.44,
-      "PEP": NaN,
+      "PEP": null,
       "XOM": 152.75
     }
   },
@@ -4689,6 +4689,23 @@
       "MSFT": 368.57,
       "PEP": 138.68,
       "XOM": 136.06
+    }
+  },
+  {
+    "date": "2026-06-30",
+    "predictions": {
+      "JNJ": 150.49,
+      "JPM": 194.1,
+      "MSFT": 333.48,
+      "PEP": 113.09,
+      "XOM": 82.05
+    },
+    "actuals": {
+      "JNJ": 253.97,
+      "JPM": 327.33,
+      "MSFT": 373.02,
+      "PEP": 135.4,
+      "XOM": 136.72
     }
   }
 ]
