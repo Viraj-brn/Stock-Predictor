@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-import yfinance as yf
+from market_data import fetch_historical_ohlcv
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 
@@ -16,7 +16,7 @@ def build_pipeline():
     
     print(f"Downloading data for {tickers}...")
     # Fetching data from 2018 up to today to give the model plenty of training context
-    df = yf.download(tickers, start="2018-01-01")
+    df = fetch_historical_ohlcv(tickers, start="2018-01-01")
     
     # Clean missing data (forward fill, then backward fill)
     df = df.ffill().bfill()

@@ -39,7 +39,7 @@ PREDICTIONS_FILE = os.path.join(base_dir, "data", "predictions.json")
 X_test = np.load(os.path.join(base_dir, "data", "X_test.npy"))
 
 # ---------------------------------------------------------------------------
-# In-memory cache for yfinance history requests
+# In-memory cache for historical data requests
 # ---------------------------------------------------------------------------
 _history_cache = {}
 CACHE_TTL = 3600  # 1 hour
@@ -83,7 +83,7 @@ def api_predictions_latest():
 def api_history(ticker):
     """
     Returns historical closing prices for a given ticker.
-    Uses yfinance with a 1-hour in-memory cache.
+    Uses Twelve Data API with a 1-hour in-memory cache.
     Query params:
         period: '1y', '6mo', '3mo' (default: '1y')
     """
@@ -105,25 +105,16 @@ def api_history(ticker):
         if now - cached_at < CACHE_TTL:
             return jsonify(cached_data)
 
-    # Fetch from yfinance
+    # Fetch from Twelve Data API
     try:
-        import yfinance as yf
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period=period)
+        import sys
+        sys.path.insert(0, os.path.join(base_dir, "src"))
+        from market_data import fetch_ticker_history
 
-        if hist.empty:
-            return jsonify({"error": "No data returned from yfinance"}), 502
+        result = fetch_ticker_history(ticker, period=period)
 
-        result = []
-        for date, row in hist.iterrows():
-            val = float(row["Close"])
-            # Skip rows with NaN/Inf values
-            if math.isnan(val) or math.isinf(val):
-                continue
-            result.append({
-                "time": date.strftime("%Y-%m-%d"),
-                "value": round(val, 2),
-            })
+        if not result:
+            return jsonify({"error": "No data returned from Twelve Data"}), 502
 
         _history_cache[cache_key] = (result, now)
         return jsonify(result)

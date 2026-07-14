@@ -2,7 +2,7 @@
 daily_predict.py — Daily prediction pipeline for DeepTime Forecasting.
 
 This script is designed to run in a GitHub Actions environment (or locally).
-It fetches the latest 60 trading days of OHLCV data from yfinance,
+It fetches the latest 60 trading days of OHLCV data from Twelve Data API,
 runs inference through the trained CNN-RNN-Attn model, and appends
 the predicted + actual closing prices to data/predictions.json.
 
@@ -77,21 +77,21 @@ def load_model():
 
 def fetch_market_data(days_back=120):
     """
-    Fetch recent OHLCV data from yfinance.
+    Fetch recent OHLCV data from Twelve Data API.
     We request extra days to account for weekends/holidays
     and ensure we get at least SEQ_LENGTH trading days.
     """
-    import yfinance as yf
+    sys.path.insert(0, os.path.join(BASE_DIR, "src"))
+    from market_data import fetch_historical_ohlcv
 
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days_back)
 
     print(f"Fetching data from {start_date.date()} to {end_date.date()} ...")
-    df = yf.download(
+    df = fetch_historical_ohlcv(
         TICKERS,
         start=start_date.strftime("%Y-%m-%d"),
         end=end_date.strftime("%Y-%m-%d"),
-        progress=False,
     )
     df = df.ffill().bfill()
 

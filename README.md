@@ -5,7 +5,7 @@ DeepTime Forecasting is a production-grade, self-updating stock prediction web a
 
 ## Key Features
 - **Automated Daily Inference:** A GitHub Actions workflow runs daily to generate new predictions and update the local dataset, ensuring the model's outputs are always current.
-- **Live Market Data:** Integrates with `yfinance` to fetch live historical market data.
+- **Live Market Data:** Integrates with [Twelve Data API](https://twelvedata.com) to fetch reliable, up-to-date historical market data.
 - **Flask Backend:** A robust backend serving historical stock data and the latest model predictions via RESTful APIs.
 - **Interactive Dashboard:** Features an aesthetic, responsive frontend utilizing interactive TradingView financial charts to visualize stock trends and forecasts.
 - **Optimized Deployment:** Containerized with Docker and configured with a CPU-only PyTorch build to optimize memory footprint, enabling deployment on Render's free tier.
@@ -13,7 +13,7 @@ DeepTime Forecasting is a production-grade, self-updating stock prediction web a
 ## Tech Stack
 - **Backend:** Python, Flask, Gunicorn
 - **Machine Learning:** PyTorch (CPU-only), scikit-learn, joblib
-- **Data Processing:** Pandas, NumPy, yfinance
+- **Data Processing:** Pandas, NumPy, Twelve Data API
 - **Frontend:** HTML, JavaScript, TradingView Charts
 - **DevOps:** Docker, GitHub Actions, Render
 
@@ -44,12 +44,19 @@ DeepTime Forecasting is a production-grade, self-updating stock prediction web a
    pip install -r requirements.txt
    ```
 
-3. **Run the Flask application:**
+3. **Set up your API key:**
+   - Get a free API key from [Twelve Data](https://twelvedata.com)
+   - Create a `.env` file in the project root:
+   ```bash
+   TWELVE_DATA_KEY=your_api_key_here
+   ```
+
+4. **Run the Flask application:**
    ```bash
    python backend/app.py
    ```
 
-4. **View the Dashboard:**
+5. **View the Dashboard:**
    Open your browser and navigate to `https://lookforstoncks.onrender.com/`.
 
 ### Using Docker

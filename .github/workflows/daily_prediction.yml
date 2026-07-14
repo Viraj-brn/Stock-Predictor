@@ -37,6 +37,8 @@ jobs:
           pip install -r requirements-actions.txt
 
       - name: Run daily prediction
+        env:
+          TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
         run: python scripts/daily_predict.py
 
       - name: Commit and push updated predictions
