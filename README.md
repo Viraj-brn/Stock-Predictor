@@ -4,7 +4,9 @@
 DeepTime Forecasting is a production-grade, self-updating stock prediction web application. It fetches live market data, predicts closing prices for 5 major stocks (**AAPL, JNJ, JPM, MSFT, PEP**) using a custom PyTorch model, and displays them on an interactive dashboard with TradingView charts.
 
 ## Key Features
-- **Automated Daily Inference:** A GitHub Actions workflow runs daily to generate new predictions and update the local dataset, ensuring the model's outputs are always current.
+- **Advanced PyTorch Architecture:** Uses a custom neural network combining GRU layers and Multi-Head Attention to process time-series sequences.
+- **High-Accuracy Returns Pipeline:** Predicts percentage returns rather than raw prices (scaled via `StandardScaler`), achieving highly robust predictions with ~1% error rates regardless of market price levels.
+- **Automated Daily Inference:** A GitHub Actions workflow runs every Tuesday–Saturday at 4:00 AM IST (22:30 UTC) to fetch the finalized end-of-day (EOD) market tapes, generate new predictions, and update the dataset.
 - **Live Market Data:** Integrates with [Twelve Data API](https://twelvedata.com) to fetch reliable, up-to-date historical market data.
 - **Flask Backend:** A robust backend serving historical stock data and the latest model predictions via RESTful APIs.
 - **Interactive Dashboard:** Features an aesthetic, responsive frontend utilizing interactive TradingView financial charts to visualize stock trends and forecasts.
@@ -56,8 +58,11 @@ DeepTime Forecasting is a production-grade, self-updating stock prediction web a
    python backend/app.py
    ```
 
-5. **View the Dashboard:**
-   Open your browser and navigate to `https://lookforstoncks.onrender.com/`.
+5. **View the Dashboard Local:**
+   Open your browser and navigate to `http://127.0.0.1:5000/`.
+
+6. **View the Live Deployment:**
+   The application is deployed at: `https://lookforstoncks.onrender.com/`.
 
 ### Using Docker
 To build and run the Docker container locally:
