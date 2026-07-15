@@ -120,7 +120,7 @@ def fetch_historical_ohlcv(tickers, start, end=None):
     DataFrame structure:
         Columns: MultiIndex of (Feature, Ticker)
             Features: ['Close', 'High', 'Low', 'Open', 'Volume']
-            Tickers:  e.g. ['JNJ', 'JPM', 'MSFT', 'PEP', 'XOM']
+            Tickers:  e.g. ['AAPL', 'JNJ', 'JPM', 'MSFT', 'PEP']
         Index: DatetimeIndex (trading days)
 
     Args:

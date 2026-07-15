@@ -29,7 +29,7 @@ class NaNSafeJSONProvider(DefaultJSONProvider):
 app = Flask(__name__)
 app.json_provider_class = NaNSafeJSONProvider
 app.json = NaNSafeJSONProvider(app)
-model, scaler = load_model_and_scaler()
+model, target_scaler = load_model_and_scaler()
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -37,6 +37,7 @@ model, scaler = load_model_and_scaler()
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 PREDICTIONS_FILE = os.path.join(base_dir, "data", "predictions.json")
 X_test = np.load(os.path.join(base_dir, "data", "X_test.npy"))
+base_closes_test = np.load(os.path.join(base_dir, "data", "base_closes_test.npy"))
 
 # ---------------------------------------------------------------------------
 # In-memory cache for historical data requests
@@ -88,7 +89,7 @@ def api_history(ticker):
         period: '1y', '6mo', '3mo' (default: '1y')
     """
     ticker = ticker.upper()
-    valid_tickers = ["JNJ", "JPM", "MSFT", "PEP", "XOM"]
+    valid_tickers = ["AAPL", "JNJ", "JPM", "MSFT", "PEP"]
     if ticker not in valid_tickers:
         return jsonify({"error": f"Invalid ticker. Must be one of: {valid_tickers}"}), 400
 
@@ -136,11 +137,16 @@ def live_predict():
     with torch.no_grad():
         y_pred = model(sample)
 
-    y_pred_np = y_pred.numpy()
-    predicted_prices = scaler.inverse_transform(y_pred_np)[0]
+    # Inverse-transform to get predicted returns
+    pred_returns = target_scaler.inverse_transform(y_pred.numpy())[0]
 
-    tickers = ["JNJ", "JPM", "MSFT", "PEP", "XOM"]
-    results = {tickers[i]: round(float(predicted_prices[i]), 2) for i in range(5)}
+    # Convert returns to prices using base close prices
+    base_close = base_closes_test[current_step]
+    tickers = ["AAPL", "JNJ", "JPM", "MSFT", "PEP"]
+    results = {
+        tickers[i]: round(float(base_close[i] * (1.0 + pred_returns[i])), 2)
+        for i in range(5)
+    }
 
     current_step += 1
     return jsonify(results)

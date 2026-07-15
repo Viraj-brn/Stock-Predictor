@@ -1,7 +1,7 @@
 # DeepTime Forecasting
 
 ## Overview
-DeepTime Forecasting is a production-grade, self-updating stock prediction web application. It fetches live market data, predicts closing prices for 5 major stocks (**JNJ, JPM, MSFT, PEP, XOM**) using a custom PyTorch model, and displays them on an interactive dashboard with TradingView charts.
+DeepTime Forecasting is a production-grade, self-updating stock prediction web application. It fetches live market data, predicts closing prices for 5 major stocks (**AAPL, JNJ, JPM, MSFT, PEP**) using a custom PyTorch model, and displays them on an interactive dashboard with TradingView charts.
 
 ## Key Features
 - **Automated Daily Inference:** A GitHub Actions workflow runs daily to generate new predictions and update the local dataset, ensuring the model's outputs are always current.

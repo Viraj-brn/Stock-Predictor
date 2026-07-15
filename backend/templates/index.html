@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="DeepTime Forecasting — AI-powered daily stock price predictions with interactive charts for JNJ, JPM, MSFT, PEP, and XOM." />
+  <meta name="description" content="DeepTime Forecasting — AI-powered daily stock price predictions with interactive charts for AAPL, JNJ, JPM, MSFT, and PEP." />
   <title>DeepTime Forecasting | AI Stock Predictions</title>
 
   <!-- Tailwind CSS -->
@@ -289,13 +289,13 @@
       'use strict';
 
       // ── Config ──────────────────────────────────────
-      const TICKERS = ['JNJ', 'JPM', 'MSFT', 'PEP', 'XOM'];
+      const TICKERS = ['AAPL', 'JNJ', 'JPM', 'MSFT', 'PEP'];
       const META = {
+        AAPL: { name: 'Apple Inc.',          icon: '🍎' },
         JNJ:  { name: 'Johnson & Johnson', icon: '💊' },
         JPM:  { name: 'JPMorgan Chase',    icon: '🏦' },
         MSFT: { name: 'Microsoft Corp.',   icon: '🖥️' },
         PEP:  { name: 'PepsiCo Inc.',      icon: '🥤' },
-        XOM:  { name: 'Exxon Mobil',       icon: '⛽' },
       };
 
       let activeTicker = 'MSFT';

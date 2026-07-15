@@ -1,10 +1,10 @@
 """
-daily_predict.py — Daily prediction pipeline for DeepTime Forecasting.
+daily_predict.py -- Daily prediction pipeline for DeepTime Forecasting.
 
 This script is designed to run in a GitHub Actions environment (or locally).
 It fetches the latest 60 trading days of OHLCV data from Twelve Data API,
-runs inference through the trained CNN-RNN-Attn model, and appends
-the predicted + actual closing prices to data/predictions.json.
+converts to percentage returns, runs inference through the trained model,
+and converts the predicted return back to a dollar price.
 
 Usage:
     python scripts/daily_predict.py            # normal daily run
@@ -24,7 +24,7 @@ import torch
 import joblib
 
 # ---------------------------------------------------------------------------
-# Path setup — works from repo root or from scripts/ directory
+# Path setup -- works from repo root or from scripts/ directory
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
@@ -35,12 +35,13 @@ from model import CNN_RNN_AttnModel
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-TICKERS = ["JNJ", "JPM", "MSFT", "PEP", "XOM"]
+TICKERS = ["AAPL", "JNJ", "JPM", "MSFT", "PEP"]
 FEATURES = ["Close", "High", "Low", "Open", "Volume"]
 SEQ_LENGTH = 60
 PREDICTIONS_FILE = os.path.join(BASE_DIR, "data", "predictions.json")
 MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model.pth")
-FEATURE_SCALER_PATH = os.path.join(BASE_DIR, "data", "close_scaler.pkl")
+FEATURE_SCALER_PATH = os.path.join(BASE_DIR, "data", "feature_scaler.pkl")
+TARGET_SCALER_PATH = os.path.join(BASE_DIR, "data", "target_scaler.pkl")
 
 
 def _sanitize_value(v):
@@ -65,21 +66,21 @@ def _sanitize_entry(entry):
 
 
 def load_model():
-    """Load the trained model and close-price scaler."""
+    """Load the trained model and target scaler."""
     model = CNN_RNN_AttnModel()
     model.load_state_dict(
         torch.load(MODEL_PATH, map_location=torch.device("cpu"), weights_only=True)
     )
     model.eval()
-    scaler = joblib.load(FEATURE_SCALER_PATH)
-    return model, scaler
+    target_scaler = joblib.load(TARGET_SCALER_PATH)
+    return model, target_scaler
 
 
 def fetch_market_data(days_back=120):
     """
     Fetch recent OHLCV data from Twelve Data API.
     We request extra days to account for weekends/holidays
-    and ensure we get at least SEQ_LENGTH trading days.
+    and ensure we get at least SEQ_LENGTH+1 trading days (need +1 for returns).
     """
     sys.path.insert(0, os.path.join(BASE_DIR, "src"))
     from market_data import fetch_historical_ohlcv
@@ -95,44 +96,51 @@ def fetch_market_data(days_back=120):
     )
     df = df.ffill().bfill()
 
-    if len(df) < SEQ_LENGTH:
+    if len(df) < SEQ_LENGTH + 2:
         raise ValueError(
-            f"Only got {len(df)} trading days, need at least {SEQ_LENGTH}. "
+            f"Only got {len(df)} trading days, need at least {SEQ_LENGTH + 2}. "
             "Try increasing days_back."
         )
     return df
 
 
-def prepare_input(df, feature_scaler_path=None):
+def prepare_input(df):
     """
     Build the (1, SEQ_LENGTH, 25) input tensor from raw OHLCV data.
-    Uses a fresh MinMaxScaler fit on the fetched window (same approach as
-    the training pipeline — the model learned to work with [0,1] scaled data).
-    
-    NOTE: We need the *feature* scaler that was used during training. However,
-    that scaler isn't saved separately. The training pipeline only saved the
-    close_scaler. So we re-fit a feature scaler on the current window. This is
-    acceptable because MinMaxScaler on a sliding window produces similar ranges,
-    and the model is robust to minor scale variations.
-    """
-    from sklearn.preprocessing import MinMaxScaler
 
-    # Build feature matrix: (num_days, 25)
+    Converts raw prices to percentage returns and scales using the
+    SAME StandardScaler that was fit during training.
+
+    Returns:
+        X_tensor: input tensor for the model
+        last_close: dict of {ticker: close_price} for the last trading day
+    """
+    # Compute percentage returns
+    returns_df = df.pct_change().iloc[1:]
+
+    # Build feature matrix from returns
     feature_list = []
     for ticker in TICKERS:
         for feature in FEATURES:
-            feature_list.append(df[feature][ticker].values)
-    X_raw = np.column_stack(feature_list)
+            feature_list.append(returns_df[feature][ticker].values)
+    X_returns = np.column_stack(feature_list)
+    X_returns = np.nan_to_num(X_returns, nan=0.0, posinf=0.0, neginf=0.0)
 
-    # Scale features
-    feature_scaler = MinMaxScaler()
-    X_scaled = feature_scaler.fit_transform(X_raw)
+    # Scale with the TRAINING scaler
+    feature_scaler = joblib.load(FEATURE_SCALER_PATH)
+    X_scaled = feature_scaler.transform(X_returns)
 
     # Take the last SEQ_LENGTH days as input
     X_input = X_scaled[-SEQ_LENGTH:]
     X_tensor = torch.tensor(X_input[np.newaxis, :, :], dtype=torch.float32)
 
-    return X_tensor
+    # Get the last close prices (base for return -> price conversion)
+    last_close = {}
+    latest = df["Close"].iloc[-1]
+    for ticker in TICKERS:
+        last_close[ticker] = float(latest[ticker])
+
+    return X_tensor, last_close
 
 
 def get_actual_prices(df):
@@ -150,7 +158,6 @@ def load_predictions():
     if os.path.exists(PREDICTIONS_FILE):
         with open(PREDICTIONS_FILE, "r") as f:
             raw = f.read()
-        # Fix any literal NaN/Infinity tokens from prior buggy runs
         raw = raw.replace("NaN", "null").replace("Infinity", "null").replace("-Infinity", "null")
         try:
             data = json.loads(raw)
@@ -164,7 +171,6 @@ def load_predictions():
 def save_predictions(data):
     """Save predictions to JSON file (NaN-safe)."""
     os.makedirs(os.path.dirname(PREDICTIONS_FILE), exist_ok=True)
-    # Sanitize every entry before writing
     data = [_sanitize_entry(e) for e in data]
     with open(PREDICTIONS_FILE, "w") as f:
         json.dump(data, f, indent=2, allow_nan=False)
@@ -174,12 +180,12 @@ def save_predictions(data):
 def run_daily_prediction():
     """Main daily prediction pipeline."""
     print("=" * 60)
-    print("DeepTime Forecasting — Daily Prediction Pipeline")
+    print("DeepTime Forecasting -- Daily Prediction Pipeline")
     print("=" * 60)
 
     # Load model
     print("\n[1/4] Loading model and scaler...")
-    model, close_scaler = load_model()
+    model, target_scaler = load_model()
 
     # Fetch market data
     print("\n[2/4] Fetching market data...")
@@ -188,24 +194,24 @@ def run_daily_prediction():
 
     # Prepare input and run inference
     print("\n[3/4] Running inference...")
-    X_input = prepare_input(df)
+    X_input, last_close = prepare_input(df)
 
     with torch.no_grad():
         y_pred = model(X_input)
 
-    # Inverse-transform predictions using the close scaler
-    y_pred_np = y_pred.numpy()
-    predicted_prices = close_scaler.inverse_transform(y_pred_np)[0]
+    # Inverse-transform to get predicted returns
+    pred_returns = target_scaler.inverse_transform(y_pred.numpy())[0]
 
+    # Convert returns to prices: predicted_price = last_close * (1 + return)
     predictions = {}
     for i, ticker in enumerate(TICKERS):
-        val = float(predicted_prices[i])
-        predictions[ticker] = None if (math.isnan(val) or math.isinf(val)) else round(val, 2)
+        pred_price = float(last_close[ticker] * (1.0 + float(pred_returns[i])))
+        predictions[ticker] = None if math.isnan(pred_price) else round(pred_price, 2)
 
-    # Get actual closing prices (yesterday's close)
+    # Get actual closing prices
     actuals = get_actual_prices(df)
 
-    # Determine the date — prediction is for the next trading day
+    # Determine the date
     last_date = df.index[-1]
     prediction_date = last_date.strftime("%Y-%m-%d")
 
@@ -213,7 +219,7 @@ def run_daily_prediction():
     print(f"  Predictions: {predictions}")
     print(f"  Actuals:     {actuals}")
 
-    # Append to predictions.json (idempotent)
+    # Append to predictions.json
     print("\n[4/4] Saving results...")
     all_predictions = load_predictions()
 
@@ -223,7 +229,6 @@ def run_daily_prediction():
         "actuals": actuals,
     }
 
-    # Check if entry for this date already exists
     existing_idx = next(
         (i for i, e in enumerate(all_predictions) if e["date"] == prediction_date),
         None,
@@ -235,7 +240,6 @@ def run_daily_prediction():
         all_predictions.append(new_entry)
         print(f"  Added new entry for {prediction_date}")
 
-    # Sort by date
     all_predictions.sort(key=lambda x: x["date"])
     save_predictions(all_predictions)
 
@@ -247,49 +251,49 @@ def seed_with_test_data():
     """
     Seed predictions.json with historical test-set predictions.
     This gives the charts data to display immediately.
+    
+    Uses base_closes_test.npy to convert predicted returns back to
+    dollar prices for display.
     """
     print("=" * 60)
     print("Seeding predictions.json with historical test data...")
     print("=" * 60)
 
-    model, close_scaler = load_model()
+    model, target_scaler = load_model()
 
     # Load test data
     X_test = np.load(os.path.join(BASE_DIR, "data", "X_test.npy"))
     y_test = np.load(os.path.join(BASE_DIR, "data", "y_test.npy"))
+    base_closes = np.load(os.path.join(BASE_DIR, "data", "base_closes_test.npy"))
 
     # Run predictions on all test samples
     X_tensor = torch.tensor(X_test, dtype=torch.float32)
     with torch.no_grad():
         y_pred = model(X_tensor)
 
-    y_pred_np = y_pred.numpy()
-    y_test_np = y_test
+    # Inverse transform to get returns
+    pred_returns = target_scaler.inverse_transform(y_pred.numpy())
+    actual_returns = target_scaler.inverse_transform(y_test)
 
-    # Inverse transform
-    pred_unscaled = close_scaler.inverse_transform(y_pred_np)
-    actual_unscaled = close_scaler.inverse_transform(y_test_np)
+    # Convert returns to prices using base closes
+    pred_prices = base_closes * (1.0 + pred_returns)
+    actual_prices = base_closes * (1.0 + actual_returns)
 
-    # Generate dates (approximate — test set is roughly the last 15% of 2018-2024 data)
-    # The data pipeline used data from 2018-01-01 to 2024-04-20
-    # 70% train, 15% val, 15% test. With ~60 day seq_length,
-    # total samples ≈ 1520 days. Test starts around sample 1292.
-    # That maps to roughly mid-2023 onward.
+    # Generate dates (test set is roughly the last 15% of 2018-2026 data)
     num_test = len(X_test)
-    base_date = datetime(2023, 6, 1)  # approximate test set start
+    base_date = datetime(2023, 6, 1)
 
     entries = []
     current_date = base_date
     for i in range(num_test):
-        # Skip weekends
         while current_date.weekday() >= 5:
             current_date += timedelta(days=1)
 
         preds = {}
         acts = {}
         for j, ticker in enumerate(TICKERS):
-            preds[ticker] = round(float(pred_unscaled[i][j]), 2)
-            acts[ticker] = round(float(actual_unscaled[i][j]), 2)
+            preds[ticker] = round(float(pred_prices[i][j]), 2)
+            acts[ticker] = round(float(actual_prices[i][j]), 2)
 
         entries.append({
             "date": current_date.strftime("%Y-%m-%d"),
